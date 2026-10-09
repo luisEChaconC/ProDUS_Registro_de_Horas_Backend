@@ -88,6 +88,7 @@ class AssistantCreateSerializer(serializers.Serializer):
 
     def create(self, validated_data):
         validated_data.pop('password_confirm')
+        validated_data['is_active'] = True
         schedule_blocks = validated_data.pop('schedule_blocks', [])
         return AssistantService.create_assistant_with_user(
             schedule_blocks=schedule_blocks,
