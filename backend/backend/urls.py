@@ -49,12 +49,12 @@ def api_root(request):
         'version': '1.0.0',
         'endpoints': {
             'auth': {
-                'login': '/api/auth/login/',
-                'refresh': '/api/auth/refresh/',
-                'validate_ip': '/api/auth/validate-institute-ip/',
+                'login': '/api/users/auth/login/',
+                'refresh': '/api/users/auth/refresh/',
+                'validate_ip': '/api/users/auth/validate-institute-ip/',
             },
-            'users': '/api/users/',
-            'allowed_ip_ranges': '/api/allowed-ip-ranges/',
+            'users': '/api/users/users/',
+            'allowed_ip_ranges': '/api/users/allowed-ip-ranges/',
         }
     })
 
