@@ -1,25 +1,25 @@
-# Automation Runner
+# Automation runner
 
-Esta carpeta permite ejecutar funciones automáticas del backend de manera controlada.
+This directory provides controlled execution of backend automation jobs.
 
-Cuando un job está `ENABLED`, este runner lo registra en `crontab` con su horario específico.
+When a job is `ENABLED`, the runner registers it in `crontab` using its configured schedule.
 
-## Estructura
+## Structure
 
-- `jobs/`: scripts de trabajos automáticos (`*.bash` o `*.sh`).
-- `schedules/`: horario por job (`<job_name>.cron`, expresión de 5 campos).
-- `enabled/`: banderas (`*.enabled`) para saber qué jobs están activos.
-- `logs/`: bitácora de activaciones y ejecuciones.
-- `run_job.bash`: ejecuta un job específico.
-- `run_enabled.bash`: ejecuta todos los jobs habilitados.
-- `enable_job.bash`: habilita un job o todos.
-- `disable_job.bash`: deshabilita un job o todos.
-- `list_jobs.bash`: muestra estado ENABLED/DISABLED.
-- `set_schedule.bash`: define/actualiza horario cron de un job.
+- `jobs/`: automation job scripts (`*.bash` or `*.sh`).
+- `schedules/`: schedule for each job (`<job_name>.cron`, a five-field expression).
+- `enabled/`: flags (`*.enabled`) indicating which jobs are active.
+- `logs/`: activation and execution logs.
+- `run_job.bash`: runs a specific job.
+- `run_enabled.bash`: runs all enabled jobs.
+- `enable_job.bash`: enables one job or all jobs.
+- `disable_job.bash`: disables one job or all jobs.
+- `list_jobs.bash`: displays the ENABLED/DISABLED status.
+- `set_schedule.bash`: sets or updates a job's cron schedule.
 
-## Uso rápido
+## Quick start
 
-Desde `backend/automation`:
+From `backend/automation`:
 
 ```bash
 ./list_jobs.bash
@@ -32,29 +32,29 @@ Desde `backend/automation`:
 ./disable_job.bash --all
 ```
 
-## Horarios por job
+## Job schedules
 
-Cada job usa su archivo en `schedules/`:
+Each job uses its own file in `schedules/`:
 
-- `schedules/close_open_time_logs.cron` -> `0 0 * * *` (medianoche)
+- `schedules/close_open_time_logs.cron` -> `0 0 * * *` (midnight)
 
-Ejemplo para miércoles a las 7:00 am:
+Example for Wednesday at 7:00 AM:
 
 ```bash
 ./set_schedule.bash close_open_time_logs "0 7 * * 3"
 ```
 
-## ¿Cómo se ejecuta automáticamente?
+## How is a job run automatically?
 
-Al hacer `enable_job`, el script crea/actualiza una entrada en `crontab` para ese job.
+When `enable_job` is run, the script creates or updates a `crontab` entry for that job.
 
-Al hacer `disable_job`, el script elimina la entrada cron de ese job.
+When `disable_job` is run, the script removes the job's cron entry.
 
-`run_job` y `run_enabled` siguen existiendo para ejecuciones manuales inmediatas.
+`run_job` and `run_enabled` remain available for immediate manual execution.
 
-## Cron (alternativa global)
+## Cron (global alternative)
 
-Ejecutar jobs habilitados todos los días a las 00:00:
+Run enabled jobs every day at midnight:
 
 ```cron
 0 0 * * * cd /home/sebas-uwu/Desktop/Produs/ProDus_Registro_de_Horas_Backend/backend/automation && ./run_enabled.bash
@@ -62,5 +62,5 @@ Ejecutar jobs habilitados todos los días a las 00:00:
 
 ## Logging
 
-- Log general: `logs/automation.log`
-- Log por job: `logs/<job_name>.log`
+- General log: `logs/automation.log`
+- Per-job log: `logs/<job_name>.log`
