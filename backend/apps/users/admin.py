@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.forms import UserChangeForm, UserCreationForm
 
-from .models import AllowedIPRange, Role, User
+from .models import AllowedIPRange, Assistant, Role, User
 
 
 class CustomUserCreationForm(UserCreationForm):
@@ -57,6 +57,12 @@ class RoleAdmin(admin.ModelAdmin):
     search_fields = ['id', 'code']
     ordering = ['code']
 
+    def has_add_permission(self, request):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
 
 @admin.register(AllowedIPRange)
 class AllowedIPRangeAdmin(admin.ModelAdmin):
@@ -64,3 +70,10 @@ class AllowedIPRangeAdmin(admin.ModelAdmin):
     list_filter = ['is_active']
     search_fields = ['network', 'description']
     ordering = ['-is_active', 'network']
+
+
+@admin.register(Assistant)
+class AssistantAdmin(admin.ModelAdmin):
+    list_display = ['user', 'start_date', 'end_date', 'weekly_hours']
+    search_fields = ['user__username', 'user__full_name']
+    list_filter = ['start_date', 'end_date']

@@ -42,7 +42,7 @@ class AssistantService:
         user = UserService().create_user(
             full_name=full_name,
             username=username,
-            role_code='assistant',
+            role_code='asistente',
             password=password,
             is_active=is_active,
             is_admin=False,

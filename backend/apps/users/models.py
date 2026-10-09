@@ -2,12 +2,23 @@ from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, Permis
 from django.db import models
 
 
+ROLE_CODES = ('asistente', 'coordinador', 'admin')
+
+
 class Role(models.Model):
     code = models.CharField(max_length=50, unique=True, verbose_name='Código')
 
     def save(self, *args, **kwargs):
         self.code = (self.code or '').strip().lower()
         super().save(*args, **kwargs)
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+
+        if self.code not in ROLE_CODES:
+            raise ValidationError({
+                'code': 'El rol debe ser asistente, coordinador o admin.'
+            })
 
     class Meta:
         db_table = 'role'
@@ -67,6 +78,15 @@ class User(AbstractBaseUser, PermissionsMixin):
         verbose_name = 'Usuario'
         verbose_name_plural = 'Usuarios'
 
+    def clean(self):
+        from django.core.exceptions import ValidationError
+
+        super().clean()
+        if self.role_id and self.role and self.role.code not in ROLE_CODES:
+            raise ValidationError({
+                'role': 'El rol debe ser asistente, coordinador o admin.'
+            })
+
     def __str__(self):
         return self.full_name or self.username
 
@@ -93,6 +113,14 @@ class Assistant(models.Model):
                 name='assistant_weekly_hours_gt_0',
             ),
         ]
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+
+        if self.user_id and self.user.role and self.user.role.code != 'asistente':
+            raise ValidationError({
+                'user': 'El usuario seleccionado debe tener el rol asistente.'
+            })
 
     def __str__(self):
         return self.user.full_name or self.user.username
