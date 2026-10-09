@@ -38,7 +38,17 @@ class UserService:
 class AssistantService:
     @staticmethod
     @transaction.atomic
-    def create_assistant_with_user(*, full_name, username, password, start_date, weekly_hours, is_active=True, end_date=None) -> Assistant:
+    def create_assistant_with_user(
+        *,
+        full_name,
+        username,
+        password,
+        start_date,
+        weekly_hours,
+        is_active=True,
+        end_date=None,
+        schedule_blocks=None,
+    ) -> Assistant:
         user = UserService().create_user(
             full_name=full_name,
             username=username,
@@ -55,6 +65,15 @@ class AssistantService:
             end_date=end_date,
             weekly_hours=weekly_hours,
         )
+        if schedule_blocks:
+            from apps.schedules.services import ScheduleService
+
+            ScheduleService.createAssistantScheduleWithBlocks(
+                assistant=assistant,
+                blocks=schedule_blocks,
+                valid_from=start_date,
+                valid_to=end_date,
+            )
 
         return assistant
 

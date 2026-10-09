@@ -4,6 +4,7 @@ from apps.time_logs.views import (
     WorkSessionCurrentView,
     WorkSessionCloseView,
     WorkSessionHistoryView,
+    WorkSessionReportsView,
 )
 
 urlpatterns = [
@@ -11,4 +12,5 @@ urlpatterns = [
     path('work-session/current/', WorkSessionCurrentView.as_view(), name='work-session-current'),
     path('work-session/close/', WorkSessionCloseView.as_view(), name='work-session-close'),
     path('work-session/history/', WorkSessionHistoryView.as_view(), name='work-session-history'),
+    path('reports/', WorkSessionReportsView.as_view(), name='work-session-reports'),
 ]
