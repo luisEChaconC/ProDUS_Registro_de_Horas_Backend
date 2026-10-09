@@ -3,6 +3,7 @@ from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 from .models import AllowedIPRange, Role, User, Assistant
 from .services import UserService, AssistantService
+from apps.schedules.serializers import ScheduleBlockCreateSerializer
 
 
 class RoleSerializer(serializers.ModelSerializer):
@@ -68,6 +69,7 @@ class AssistantCreateSerializer(serializers.Serializer):
     start_date = serializers.DateField()
     end_date = serializers.DateField(required=False, allow_null=True)
     weekly_hours = serializers.IntegerField(min_value=1, max_value=168)
+    schedule_blocks = ScheduleBlockCreateSerializer(many=True, required=False, default=list)
 
     def validate_username(self, value):
         if UserService.username_exists(username=value):
@@ -86,7 +88,11 @@ class AssistantCreateSerializer(serializers.Serializer):
 
     def create(self, validated_data):
         validated_data.pop('password_confirm')
-        return AssistantService.create_assistant_with_user(**validated_data)
+        schedule_blocks = validated_data.pop('schedule_blocks', [])
+        return AssistantService.create_assistant_with_user(
+            schedule_blocks=schedule_blocks,
+            **validated_data,
+        )
 
 class AssistantListSerializer(serializers.ModelSerializer):
     id = serializers.IntegerField(source='user.id', read_only=True)
