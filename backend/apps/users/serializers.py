@@ -4,6 +4,7 @@ from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from .models import AllowedIPRange, Role, User, Assistant, ROLE_CODES
 from .services import UserService, AssistantService
 from apps.schedules.serializers import ScheduleBlockCreateSerializer
+from apps.projects.models import CoordinatorXProject, Project
 
 
 class RoleSerializer(serializers.ModelSerializer):
@@ -118,6 +119,89 @@ class AssistantCreateSerializer(serializers.Serializer):
             schedule_blocks=schedule_blocks,
             **validated_data,
         )
+
+
+class CoordinatorCreateSerializer(serializers.Serializer):
+    full_name = serializers.CharField(max_length=150)
+    username = serializers.CharField(max_length=255)
+    password = serializers.CharField(write_only=True, min_length=8)
+    password_confirm = serializers.CharField(write_only=True, min_length=8)
+    project_ids = serializers.PrimaryKeyRelatedField(
+        many=True,
+        queryset=Project.objects.filter(is_active=True),
+        required=False,
+        write_only=True,
+    )
+
+    def validate_username(self, value):
+        if UserService.username_exists(username=value):
+            raise serializers.ValidationError('Ya existe un usuario con ese username.')
+        return value
+
+    def validate(self, attrs):
+        if attrs['password'] != attrs['password_confirm']:
+            raise serializers.ValidationError({'password_confirm': 'Las contraseñas no coinciden.'})
+        return attrs
+
+    def create(self, validated_data):
+        validated_data.pop('password_confirm')
+        projects = validated_data.pop('project_ids', [])
+        user = UserService.create_user(
+            full_name=validated_data['full_name'],
+            username=validated_data['username'],
+            role_code='coordinador',
+            password=validated_data['password'],
+            is_active=True,
+            is_admin=False,
+            needs_password_change=True,
+        )
+        CoordinatorXProject.objects.bulk_create([
+            CoordinatorXProject(coordinator=user, project=project)
+            for project in projects
+        ])
+        return user
+
+
+class CoordinatorAdminSerializer(serializers.ModelSerializer):
+    username = serializers.CharField()
+    project_ids = serializers.PrimaryKeyRelatedField(
+        many=True,
+        queryset=Project.objects.filter(is_active=True),
+        required=False,
+    )
+
+    class Meta:
+        model = User
+        fields = ['id', 'username', 'full_name', 'is_active', 'project_ids']
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data['project_ids'] = list(
+            instance.coordinator_projects.values_list('project_id', flat=True)
+        )
+        return data
+
+    def update(self, instance, validated_data):
+        projects = validated_data.pop('project_ids', None)
+        for field, value in validated_data.items():
+            setattr(instance, field, value)
+        instance.save()
+        if projects is not None:
+            CoordinatorXProject.objects.filter(coordinator=instance).exclude(
+                project__in=projects
+            ).delete()
+            existing_ids = set(
+                CoordinatorXProject.objects.filter(
+                    coordinator=instance,
+                    project__in=projects,
+                ).values_list('project_id', flat=True)
+            )
+            CoordinatorXProject.objects.bulk_create([
+                CoordinatorXProject(coordinator=instance, project=project)
+                for project in projects
+                if project.id not in existing_ids
+            ])
+        return instance
 
 class AssistantListSerializer(serializers.ModelSerializer):
     id = serializers.IntegerField(source='user.id', read_only=True)

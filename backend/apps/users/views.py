@@ -14,6 +14,8 @@ from .serializers import (
     AssistantCreateSerializer,
     AssistantListSerializer,
     AssistantAdminSerializer,
+    CoordinatorCreateSerializer,
+    CoordinatorAdminSerializer,
     ChangePasswordSerializer,
     CustomTokenObtainPairSerializer,
     UserSerializer,
@@ -61,6 +63,39 @@ def list_assistants_view(request):
     queryset = Assistant.objects.select_related('user').order_by('user__full_name')
     serializer = AssistantListSerializer(queryset, many=True)
     return Response({'ok': True, 'results': serializer.data}, status=status.HTTP_200_OK)
+
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated, IsAdmin])
+def admin_coordinators_view(request):
+    if request.method == 'POST':
+        serializer = CoordinatorCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+        return Response({'ok': True, 'user': UserSerializer(user).data}, status=status.HTTP_201_CREATED)
+
+    users = User.objects.select_related('role').filter(
+        role__code__in=['coordinador', 'coordinator'],
+    ).order_by('full_name', 'username')
+    return Response(
+        {'ok': True, 'results': CoordinatorAdminSerializer(users, many=True).data},
+        status=status.HTTP_200_OK,
+    )
+
+
+@api_view(['PATCH'])
+@permission_classes([IsAuthenticated, IsAdmin])
+def admin_coordinator_detail_view(request, coordinator_id):
+    coordinator = User.objects.filter(
+        id=coordinator_id,
+        role__code__in=['coordinador', 'coordinator'],
+    ).first()
+    if coordinator is None:
+        return Response({'detail': 'Coordinador no encontrado.'}, status=status.HTTP_404_NOT_FOUND)
+    serializer = CoordinatorAdminSerializer(coordinator, data=request.data, partial=True)
+    serializer.is_valid(raise_exception=True)
+    serializer.save()
+    return Response({'ok': True, 'user': serializer.data}, status=status.HTTP_200_OK)
 
 
 @api_view(['GET', 'PATCH'])
