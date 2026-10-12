@@ -2,6 +2,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
+from core.permissions import IsAdmin
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 from datetime import datetime, timedelta
@@ -17,6 +18,7 @@ from apps.time_logs.models import TimeLog
 from apps.time_logs.serializers import (
     TimeLogSerializer,
     WorkSessionCloseInputSerializer,
+    AdminTimeLogSerializer,
 )
 
 

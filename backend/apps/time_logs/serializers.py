@@ -31,6 +31,11 @@ class TimeLogSerializer(serializers.ModelSerializer):
         return obj.check_out is None and getattr(obj.status, 'code', None) == 'IN_PROGRESS'
 
 
+class AdminTimeLogSerializer(TimeLogSerializer):
+    class Meta(TimeLogSerializer.Meta):
+        read_only_fields = ['id', 'check_in', 'status_code', 'elapsed_seconds', 'is_active']
+
+
 class WorkSessionCloseInputSerializer(serializers.Serializer):
     project_id = serializers.IntegerField(required=False, allow_null=True)
     manager_user_id = serializers.IntegerField(required=False, allow_null=True)
