@@ -14,6 +14,8 @@ from .views import (
     change_password_view,
     admin_summary_view,
     admin_assistant_detail_view,
+    admin_coordinators_view,
+    admin_coordinator_detail_view,
 )
 
 router = DefaultRouter()
@@ -31,6 +33,8 @@ urlpatterns = [
     path('assistants/list/', list_assistants_view, name='list_assistants'),
     path('admin/summary/', admin_summary_view, name='admin_summary'),
     path('admin/assistants/<int:assistant_id>/', admin_assistant_detail_view, name='admin_assistant_detail'),
+    path('admin/coordinators/', admin_coordinators_view, name='admin_coordinators'),
+    path('admin/coordinators/<int:coordinator_id>/', admin_coordinator_detail_view, name='admin_coordinator_detail'),
     path('change-password/', change_password_view, name='change_password'),
     path('', include(router.urls)),
 ]
