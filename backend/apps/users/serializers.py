@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
-from .models import AllowedIPRange, Role, User, Assistant
+from .models import AllowedIPRange, Role, User, Assistant, ROLE_CODES
 from .services import UserService, AssistantService
 from apps.schedules.serializers import ScheduleBlockCreateSerializer
 
@@ -13,12 +13,36 @@ class RoleSerializer(serializers.ModelSerializer):
 
 
 class UserSerializer(serializers.ModelSerializer):
-    role = serializers.CharField(source='role.code', read_only=True)
+    role = serializers.CharField(required=False, allow_null=True)
 
     class Meta:
         model = User
         fields = ['id', 'full_name', 'username', 'role', 'is_admin', 'is_active', 'needs_password_change', 'created_at']
-        read_only_fields = ['id', 'created_at']
+        read_only_fields = ['id', 'created_at', 'is_admin', 'needs_password_change']
+
+    def validate_role(self, value):
+        normalized = (value or '').strip().lower()
+        if normalized not in ROLE_CODES:
+            raise serializers.ValidationError(
+                'El rol debe ser asistente, coordinador o admin.'
+            )
+        return normalized
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data['role'] = instance.role.code if instance.role else None
+        return data
+
+    def update(self, instance, validated_data):
+        role_code = validated_data.pop('role', None)
+        for field, value in validated_data.items():
+            setattr(instance, field, value)
+        if role_code is not None:
+            instance.role, _ = Role.objects.get_or_create(code=role_code)
+            if not instance.is_superuser:
+                instance.is_admin = role_code == 'admin'
+        instance.save()
+        return instance
 
 
 class AllowedIPRangeSerializer(serializers.ModelSerializer):

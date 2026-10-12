@@ -7,6 +7,7 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 from core.permissions import IsAdmin, IsAdminOrCoordinator, IsFromInstitute 
 
 from .models import AllowedIPRange, Assistant, User
+from apps.projects.models import Project
 from .serializers import (
     AllowedIPRangeSerializer,
     AssistantCreateSerializer,
@@ -59,6 +60,20 @@ def list_assistants_view(request):
     serializer = AssistantListSerializer(queryset, many=True)
     return Response({'ok': True, 'results': serializer.data}, status=status.HTTP_200_OK)
 
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated, IsAdmin])
+def admin_summary_view(request):
+    return Response(
+        {
+            'ok': True,
+            'active_users': User.objects.filter(is_active=True).count(),
+            'active_assistants': Assistant.objects.filter(user__is_active=True).count(),
+            'active_projects': Project.objects.filter(is_active=True).count(),
+        },
+        status=status.HTTP_200_OK,
+    )
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def change_password_view(request):
@@ -92,6 +107,13 @@ class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all().order_by('username')
     serializer_class = UserSerializer
     permission_classes = [IsAuthenticated, IsAdmin]
+
+    def perform_destroy(self, instance):
+        if instance.pk == self.request.user.pk:
+            from rest_framework.exceptions import ValidationError
+
+            raise ValidationError('No puedes eliminar tu propio usuario.')
+        instance.delete()
 
     @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
     def me(self, request):
