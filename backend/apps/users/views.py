@@ -7,11 +7,13 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 from core.permissions import IsAdmin, IsAdminOrCoordinator, IsFromInstitute 
 
 from .models import AllowedIPRange, Assistant, User
+from apps.schedules.models import Schedule
 from apps.projects.models import Project
 from .serializers import (
     AllowedIPRangeSerializer,
     AssistantCreateSerializer,
     AssistantListSerializer,
+    AssistantAdminSerializer,
     ChangePasswordSerializer,
     CustomTokenObtainPairSerializer,
     UserSerializer,
@@ -59,6 +61,35 @@ def list_assistants_view(request):
     queryset = Assistant.objects.select_related('user').order_by('user__full_name')
     serializer = AssistantListSerializer(queryset, many=True)
     return Response({'ok': True, 'results': serializer.data}, status=status.HTTP_200_OK)
+
+
+@api_view(['GET', 'PATCH'])
+@permission_classes([IsAuthenticated, IsAdmin])
+def admin_assistant_detail_view(request, assistant_id):
+    assistant = Assistant.objects.select_related('user').filter(user_id=assistant_id).first()
+    if assistant is None:
+        return Response({'detail': 'Asistente no encontrado.'}, status=status.HTTP_404_NOT_FOUND)
+
+    if request.method == 'PATCH':
+        serializer = AssistantAdminSerializer(
+            assistant,
+            data=request.data,
+            partial=True,
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
+    schedule = Schedule.objects.filter(assistant=assistant).prefetch_related('blocks').order_by('-valid_from').first()
+    data = AssistantAdminSerializer(assistant).data
+    data['schedule_blocks'] = [
+        {
+            'day_of_week': block.day_of_week,
+            'start_time': block.start_time.strftime('%H:%M'),
+            'end_time': block.end_time.strftime('%H:%M'),
+        }
+        for block in schedule.blocks.all()
+    ] if schedule else []
+    return Response({'ok': True, 'assistant': data}, status=status.HTTP_200_OK)
 
 
 @api_view(['GET'])

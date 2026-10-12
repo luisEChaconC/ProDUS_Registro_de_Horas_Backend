@@ -247,3 +247,35 @@ class WorkSessionReportsView(APIView):
             'total_seconds': total_seconds,
             'results': serializer.data,
         })
+
+
+class AdminAssistantReportsView(APIView):
+    permission_classes = [IsAuthenticated, IsAdmin]
+
+    def get_queryset(self, assistant_id):
+        return TimeLog.objects.filter(
+            assistant_id=assistant_id,
+            check_out__isnull=False,
+        ).select_related('status').order_by('-check_in')
+
+    def get(self, request, assistant_id):
+        serializer = AdminTimeLogSerializer(self.get_queryset(assistant_id), many=True)
+        return Response({'ok': True, 'results': serializer.data})
+
+    def patch(self, request, assistant_id):
+        time_log_id = request.data.get('id')
+        time_log = self.get_queryset(assistant_id).filter(id=time_log_id).first()
+        if time_log is None:
+            return Response({'detail': 'Reporte no encontrado.'}, status=status.HTTP_404_NOT_FOUND)
+        serializer = AdminTimeLogSerializer(time_log, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response({'ok': True, 'report': serializer.data})
+
+    def delete(self, request, assistant_id):
+        time_log_id = request.data.get('id')
+        time_log = self.get_queryset(assistant_id).filter(id=time_log_id).first()
+        if time_log is None:
+            return Response({'detail': 'Reporte no encontrado.'}, status=status.HTTP_404_NOT_FOUND)
+        time_log.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)

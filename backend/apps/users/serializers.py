@@ -129,6 +129,60 @@ class AssistantListSerializer(serializers.ModelSerializer):
         model = Assistant
         fields = ['id', 'username', 'full_name', 'is_active']
 
+
+class AssistantAdminSerializer(serializers.ModelSerializer):
+    id = serializers.IntegerField(source='user.id', read_only=True)
+    username = serializers.CharField(source='user.username')
+    full_name = serializers.CharField(source='user.full_name')
+    is_active = serializers.BooleanField(source='user.is_active')
+    schedule_blocks = serializers.ListField(required=False, write_only=True)
+
+    class Meta:
+        model = Assistant
+        fields = [
+            'id', 'username', 'full_name', 'is_active',
+            'start_date', 'end_date', 'weekly_hours', 'schedule_blocks',
+        ]
+
+    def update(self, instance, validated_data):
+        user_data = validated_data.pop('user', {})
+        user_data.update({
+            key: validated_data.pop(key)
+            for key in ('username', 'full_name', 'is_active')
+            if key in validated_data
+        })
+        schedule_blocks = validated_data.pop('schedule_blocks', None)
+        for key, value in validated_data.items():
+            setattr(instance, key, value)
+        for key, value in user_data.items():
+            setattr(instance.user, key, value)
+        instance.user.save()
+        instance.save()
+
+        if schedule_blocks is not None:
+            from apps.schedules.models import Schedule, ScheduleBlock
+            from django.db import transaction
+
+            with transaction.atomic():
+                schedule = Schedule.objects.filter(assistant=instance).order_by('-valid_from').first()
+                if schedule is None:
+                    schedule = Schedule.objects.create(
+                        assistant=instance,
+                        valid_from=instance.start_date,
+                        valid_to=instance.end_date,
+                    )
+                schedule.blocks.all().delete()
+                ScheduleBlock.objects.bulk_create([
+                    ScheduleBlock(
+                        schedule=schedule,
+                        day_of_week=block['day_of_week'],
+                        start_time=block['start_time'],
+                        end_time=block['end_time'],
+                    )
+                    for block in schedule_blocks
+                ])
+        return instance
+
 class ChangePasswordSerializer(serializers.Serializer):
     current_password = serializers.CharField(write_only=True)
     new_password = serializers.CharField(write_only=True, min_length=8)
