@@ -7,6 +7,7 @@ from django.core.exceptions import ValidationError
 from django.utils import timezone
 from datetime import datetime, timedelta
 from datetime import date
+from math import ceil
 
 from apps.ip_control.services import validate_ip_access
 from apps.time_logs.services import (
@@ -158,7 +159,14 @@ class WorkSessionHistoryView(APIView):
             assistant = request.user.assistant
         except Exception:
             return Response(
-                {'ok': True, 'total_seconds': 0, 'sessions': []},
+                {
+                    'ok': True,
+                    'total_seconds': 0,
+                    'sessions': [],
+                    'cumulative_total_seconds': 0,
+                    'expected_total_seconds': 0,
+                    'deficit_seconds': 0,
+                },
                 status=status.HTTP_200_OK,
             )
 
@@ -197,6 +205,24 @@ class WorkSessionHistoryView(APIView):
             )
             for item in serializer.data
         )
+        today = timezone.localdate()
+        tracked_until = min(today, assistant.end_date) if assistant.end_date else today
+        elapsed_days = max(0, (tracked_until - assistant.start_date).days + 1)
+        expected_total_seconds = ceil(elapsed_days / 7) * assistant.weekly_hours * 3600
+        all_sessions = TimeLog.objects.filter(
+            assistant=assistant,
+            check_out__isnull=False,
+            check_in__date__gte=assistant.start_date,
+            check_in__date__lte=tracked_until,
+        )
+        cumulative_total_seconds = sum(
+            max(
+                0,
+                int((session.check_out - session.check_in).total_seconds())
+                - (session.break_minutes * 60),
+            )
+            for session in all_sessions
+        )
 
         return Response(
             {
@@ -206,6 +232,9 @@ class WorkSessionHistoryView(APIView):
                 'period_end': period_end,
                 'total_seconds': total_seconds,
                 'sessions': serializer.data,
+                'cumulative_total_seconds': cumulative_total_seconds,
+                'expected_total_seconds': expected_total_seconds,
+                'deficit_seconds': cumulative_total_seconds - expected_total_seconds,
             },
             status=status.HTTP_200_OK,
         )
