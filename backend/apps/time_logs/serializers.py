@@ -6,6 +6,9 @@ from apps.time_logs.models import TimeLog
 
 class TimeLogSerializer(serializers.ModelSerializer):
     status_code = serializers.CharField(source='status.code', read_only=True)
+    project_name = serializers.CharField(source='project.name', read_only=True, allow_null=True)
+    manager_name = serializers.SerializerMethodField()
+    notes = serializers.CharField(source='decision_comment', read_only=True)
     elapsed_seconds = serializers.SerializerMethodField()
     is_active = serializers.SerializerMethodField()
 
@@ -16,7 +19,11 @@ class TimeLogSerializer(serializers.ModelSerializer):
             'check_in',
             'check_out',
             'status_code',
+            'project_name',
+            'manager_name',
             'work_description',
+            'activities',
+            'notes',
             'break_minutes',
             'elapsed_seconds',
             'is_active',
@@ -29,6 +36,11 @@ class TimeLogSerializer(serializers.ModelSerializer):
 
     def get_is_active(self, obj):
         return obj.check_out is None and getattr(obj.status, 'code', None) == 'IN_PROGRESS'
+
+    def get_manager_name(self, obj):
+        if not obj.manager_user:
+            return None
+        return obj.manager_user.full_name or obj.manager_user.username
 
 
 class AdminTimeLogSerializer(TimeLogSerializer):
