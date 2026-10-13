@@ -46,6 +46,8 @@ class TimeLogSerializer(serializers.ModelSerializer):
 
 
 class AdminTimeLogSerializer(TimeLogSerializer):
+    assistant_id = serializers.IntegerField(read_only=True)
+    assistant_name = serializers.SerializerMethodField()
     project_id = serializers.PrimaryKeyRelatedField(
         source='project',
         queryset=Project.objects.all(),
@@ -71,8 +73,16 @@ class AdminTimeLogSerializer(TimeLogSerializer):
     )
 
     class Meta(TimeLogSerializer.Meta):
-        fields = TimeLogSerializer.Meta.fields + ['project_id', 'manager_user_id']
+        fields = TimeLogSerializer.Meta.fields + [
+            'assistant_id',
+            'assistant_name',
+            'project_id',
+            'manager_user_id',
+        ]
         read_only_fields = ['id', 'status_code', 'elapsed_seconds', 'is_active']
+
+    def get_assistant_name(self, obj):
+        return obj.assistant.user.full_name or obj.assistant.user.username
 
 
 class WorkSessionCloseInputSerializer(serializers.Serializer):
