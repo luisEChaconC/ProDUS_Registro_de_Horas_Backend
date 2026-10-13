@@ -1,7 +1,9 @@
 from rest_framework import serializers
 from django.utils import timezone
 
+from apps.projects.models import Project
 from apps.time_logs.models import TimeLog
+from apps.users.models import User
 
 
 class TimeLogSerializer(serializers.ModelSerializer):
@@ -44,8 +46,33 @@ class TimeLogSerializer(serializers.ModelSerializer):
 
 
 class AdminTimeLogSerializer(TimeLogSerializer):
+    project_id = serializers.PrimaryKeyRelatedField(
+        source='project',
+        queryset=Project.objects.all(),
+        allow_null=True,
+        required=False,
+    )
+    manager_user_id = serializers.PrimaryKeyRelatedField(
+        source='manager_user',
+        queryset=User.objects.all(),
+        allow_null=True,
+        required=False,
+    )
+    status_code = serializers.SlugRelatedField(
+        source='status',
+        slug_field='code',
+        read_only=True,
+    )
+    notes = serializers.CharField(
+        source='decision_comment',
+        required=False,
+        allow_blank=True,
+        max_length=500,
+    )
+
     class Meta(TimeLogSerializer.Meta):
-        read_only_fields = ['id', 'check_in', 'status_code', 'elapsed_seconds', 'is_active']
+        fields = TimeLogSerializer.Meta.fields + ['project_id', 'manager_user_id']
+        read_only_fields = ['id', 'status_code', 'elapsed_seconds', 'is_active']
 
 
 class WorkSessionCloseInputSerializer(serializers.Serializer):
