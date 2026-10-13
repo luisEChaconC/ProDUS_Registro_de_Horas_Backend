@@ -256,7 +256,7 @@ class AdminAssistantReportsView(APIView):
         return TimeLog.objects.filter(
             assistant_id=assistant_id,
             check_out__isnull=False,
-        ).select_related('status').order_by('-check_in')
+        ).select_related('project', 'manager_user', 'status').order_by('-check_in')
 
     def get(self, request, assistant_id):
         serializer = AdminTimeLogSerializer(self.get_queryset(assistant_id), many=True)
