@@ -288,8 +288,30 @@ class AdminAssistantReportsView(APIView):
         ).select_related('project', 'manager_user', 'status').order_by('-check_in')
 
     def get(self, request, assistant_id):
-        serializer = AdminTimeLogSerializer(self.get_queryset(assistant_id), many=True)
-        return Response({'ok': True, 'results': serializer.data})
+        queryset = self.get_queryset(assistant_id)
+        start_date = request.query_params.get('start_date')
+        end_date = request.query_params.get('end_date')
+        try:
+            if start_date:
+                queryset = queryset.filter(check_in__date__gte=date.fromisoformat(start_date))
+            if end_date:
+                queryset = queryset.filter(check_in__date__lte=date.fromisoformat(end_date))
+        except ValueError:
+            return Response(
+                {'detail': 'Las fechas deben usar el formato YYYY-MM-DD.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        serializer = AdminTimeLogSerializer(queryset, many=True)
+        total_seconds = sum(
+            max(0, item['elapsed_seconds'] - item['break_minutes'] * 60)
+            for item in serializer.data
+        )
+        return Response({
+            'ok': True,
+            'total_seconds': total_seconds,
+            'results': serializer.data,
+        })
 
     def patch(self, request, assistant_id):
         time_log_id = request.data.get('id')
