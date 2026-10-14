@@ -16,6 +16,14 @@ class ProjectAdminSerializer(serializers.ModelSerializer):
         fields = ['id', 'name', 'is_active']
         read_only_fields = ['id']
 
+    def validate_name(self, value):
+        queryset = Project.objects.filter(name=value)
+        if self.instance is not None:
+            queryset = queryset.exclude(pk=self.instance.pk)
+        if queryset.exists():
+            raise serializers.ValidationError('Ya existe un proyecto con ese nombre.')
+        return value
+
 
 class ActiveCoordinatorSerializer(serializers.ModelSerializer):
     class Meta:
