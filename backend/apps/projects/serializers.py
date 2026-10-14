@@ -11,6 +11,8 @@ class ActiveProjectSerializer(serializers.ModelSerializer):
 
 
 class ProjectAdminSerializer(serializers.ModelSerializer):
+    name = serializers.CharField(max_length=150, validators=[])
+
     class Meta:
         model = Project
         fields = ['id', 'name', 'is_active']
