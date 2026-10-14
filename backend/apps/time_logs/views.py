@@ -16,6 +16,8 @@ from apps.time_logs.services import (
     get_current_time_log_state,
 )
 from apps.time_logs.models import TimeLog
+from apps.time_logs.models import TimeLogStatus
+from apps.users.models import Assistant
 from apps.time_logs.serializers import (
     TimeLogSerializer,
     WorkSessionCloseInputSerializer,
@@ -280,6 +282,31 @@ class WorkSessionReportsView(APIView):
 
 class AdminAssistantReportsView(APIView):
     permission_classes = [IsAuthenticated, IsAdmin]
+
+    def post(self, request, assistant_id):
+        if not Assistant.objects.filter(pk=assistant_id).exists():
+            return Response(
+                {'detail': 'Asistente no encontrado.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        input_serializer = AdminTimeLogSerializer(data=request.data, partial=True)
+        input_serializer.is_valid(raise_exception=True)
+        closed_status, _ = TimeLogStatus.objects.get_or_create(
+            code='CLOSED',
+            defaults={'is_final': True},
+        )
+        now = timezone.now()
+        validated_data = input_serializer.validated_data
+        time_log = TimeLog.objects.create(
+            assistant_id=assistant_id,
+            check_in=validated_data.pop('check_in', now),
+            check_out=validated_data.pop('check_out', now),
+            status=closed_status,
+            **validated_data,
+        )
+        serializer = AdminTimeLogSerializer(time_log)
+        return Response({'ok': True, 'report': serializer.data}, status=status.HTTP_201_CREATED)
 
     def get_queryset(self, assistant_id):
         return TimeLog.objects.filter(
