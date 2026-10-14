@@ -181,6 +181,14 @@ class CoordinatorAdminSerializer(serializers.ModelSerializer):
         )
         return data
 
+    def validate_username(self, value):
+        queryset = User.objects.filter(username=value)
+        if self.instance is not None:
+            queryset = queryset.exclude(pk=self.instance.pk)
+        if queryset.exists():
+            raise serializers.ValidationError('Ya existe un usuario con ese username.')
+        return value
+
     def update(self, instance, validated_data):
         projects = validated_data.pop('project_ids', None)
         for field, value in validated_data.items():
@@ -227,6 +235,15 @@ class AssistantAdminSerializer(serializers.ModelSerializer):
             'id', 'username', 'full_name', 'is_active',
             'start_date', 'end_date', 'weekly_hours', 'schedule_blocks',
         ]
+
+    def validate_username(self, value):
+        current_user_id = self.instance.user_id if self.instance is not None else None
+        queryset = User.objects.filter(username=value)
+        if current_user_id is not None:
+            queryset = queryset.exclude(pk=current_user_id)
+        if queryset.exists():
+            raise serializers.ValidationError('Ya existe un usuario con ese username.')
+        return value
 
     def update(self, instance, validated_data):
         user_data = validated_data.pop('user', {})
