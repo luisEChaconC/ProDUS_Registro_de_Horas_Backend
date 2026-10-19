@@ -85,7 +85,7 @@ class AssistantService:
             start_date=start_date,
             end_date=end_date,
             weekly_hours=weekly_hours,
-            last_reactivation_date=user.created_at,
+            last_reactivation_date=start_date,
         )
 
         return assistant
