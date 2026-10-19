@@ -7,7 +7,6 @@ from django.core.exceptions import ValidationError
 from django.utils import timezone
 from datetime import datetime, timedelta
 from datetime import date
-from math import ceil
 
 from apps.ip_control.services import validate_ip_access
 from apps.time_logs.services import (
@@ -209,12 +208,19 @@ class WorkSessionHistoryView(APIView):
         )
         today = timezone.localdate()
         tracked_until = min(today, assistant.end_date) if assistant.end_date else today
-        elapsed_days = max(0, (tracked_until - assistant.start_date).days + 1)
-        expected_total_seconds = ceil(elapsed_days / 7) * assistant.weekly_hours * 3600
+        reactivation_week_start = assistant.last_reactivation_date - timedelta(
+            days=assistant.last_reactivation_date.weekday()
+        )
+        tracked_week_start = tracked_until - timedelta(days=tracked_until.weekday())
+        elapsed_weeks = max(
+            0,
+            ((tracked_week_start - reactivation_week_start).days // 7) + 1,
+        )
+        expected_total_seconds = elapsed_weeks * assistant.weekly_hours * 3600
         all_sessions = TimeLog.objects.filter(
             assistant=assistant,
             check_out__isnull=False,
-            check_in__date__gte=assistant.start_date,
+            check_in__date__gte=assistant.last_reactivation_date,
             check_in__date__lte=tracked_until,
         )
         cumulative_total_seconds = sum(
