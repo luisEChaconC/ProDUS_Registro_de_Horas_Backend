@@ -1,5 +1,6 @@
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 from django.db import models
+from django.utils import timezone
 
 
 ROLE_CODES = ('asistente', 'coordinador', 'admin')
@@ -102,6 +103,10 @@ class Assistant(models.Model):
     start_date = models.DateField(verbose_name='Fecha de inicio')
     end_date = models.DateField(null=True, blank=True, verbose_name='Fecha de finalización')
     weekly_hours = models.IntegerField(verbose_name='Horas semanales')
+    last_reactivation_date = models.DateTimeField(
+        default=timezone.now,
+        verbose_name='Fecha de última reactivación',
+    )
 
     class Meta:
         db_table = 'assistant'

@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from django.utils import timezone
 
 from .models import AllowedIPRange, Role, User, Assistant, ROLE_CODES
 from .services import UserService, AssistantService
@@ -233,6 +234,7 @@ class AssistantAdminSerializer(serializers.ModelSerializer):
         model = Assistant
         fields = [
             'id', 'username', 'full_name', 'is_active',
+            'last_reactivation_date',
             'start_date', 'end_date', 'weekly_hours', 'schedule_blocks',
         ]
 
@@ -253,6 +255,10 @@ class AssistantAdminSerializer(serializers.ModelSerializer):
             if key in validated_data
         })
         schedule_blocks = validated_data.pop('schedule_blocks', None)
+        was_active = instance.user.is_active
+        will_be_active = user_data.get('is_active', was_active)
+        if not was_active and will_be_active:
+            instance.last_reactivation_date = timezone.now()
         for key, value in validated_data.items():
             setattr(instance, key, value)
         for key, value in user_data.items():
