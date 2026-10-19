@@ -258,7 +258,7 @@ class AssistantAdminSerializer(serializers.ModelSerializer):
         was_active = instance.user.is_active
         will_be_active = user_data.get('is_active', was_active)
         if not was_active and will_be_active:
-            instance.last_reactivation_date = timezone.now()
+            instance.last_reactivation_date = timezone.localdate()
         for key, value in validated_data.items():
             setattr(instance, key, value)
         for key, value in user_data.items():
