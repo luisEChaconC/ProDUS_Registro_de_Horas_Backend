@@ -23,6 +23,14 @@ class Request(models.Model):
         related_name='sent_requests',
         verbose_name='Asistente que envía',
     )
+    report = models.ForeignKey(
+        'time_logs.TimeLog',
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name='change_requests',
+        verbose_name='Reporte relacionado',
+    )
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='Fecha de creación')
     request_type = models.CharField(max_length=20, choices=REQUEST_TYPES, verbose_name='Tipo de request')
     message = models.TextField(verbose_name='Mensaje del request')
@@ -44,6 +52,12 @@ class Request(models.Model):
             or self.assistant.role.code != 'asistente'
         ):
             raise ValidationError({'assistant': 'El usuario seleccionado debe ser un asistente activo.'})
+        if self.request_type == self.REPORT and self.report_id is None:
+            raise ValidationError({'report': 'Debes seleccionar el reporte que requiere el cambio.'})
+        if self.request_type == self.SCHEDULE and self.report_id is not None:
+            raise ValidationError({'report': 'Las solicitudes de horario no pueden tener un reporte relacionado.'})
+        if self.report_id and self.assistant_id and self.report.assistant.user_id != self.assistant_id:
+            raise ValidationError({'report': 'El reporte debe pertenecer al asistente que envía la solicitud.'})
 
     def mark_attended(self):
         self.is_attended = True

@@ -43,14 +43,16 @@ def requests_view(request):
     attended = request.query_params.get('attended')
     if attended in ('true', 'false'):
         queryset = queryset.filter(is_attended=attended == 'true')
-    queryset = queryset.select_related('admin', 'assistant')
+    queryset = queryset.select_related('admin', 'assistant', 'report', 'report__project')
     return Response({'ok': True, 'results': RequestSerializer(queryset, many=True).data})
 
 
 @api_view(['GET', 'PATCH'])
 @permission_classes([IsAuthenticated])
 def request_detail_view(request, request_id):
-    request_instance = Request.objects.select_related('admin', 'assistant').filter(id=request_id).first()
+    request_instance = Request.objects.select_related(
+        'admin', 'assistant', 'report', 'report__project',
+    ).filter(id=request_id).first()
     if request_instance is None:
         return Response({'detail': 'Solicitud no encontrada.'}, status=status.HTTP_404_NOT_FOUND)
 
