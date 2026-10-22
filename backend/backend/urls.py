@@ -78,5 +78,6 @@ urlpatterns = [
         path('timelogs/', include('apps.time_logs.urls')),
         path('projects/', include('apps.projects.urls')),
         path('schedules/', include('apps.schedules.urls')),
+        path('requests/', include('apps.request_management.urls')),
     ])),
 ]
