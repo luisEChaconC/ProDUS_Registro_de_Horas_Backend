@@ -71,6 +71,7 @@ INSTALLED_APPS = [
     'apps.time_logs',
     'apps.ip_control',
     'apps.projects',
+    'apps.request_management',
 ]
 
 # ============================================
