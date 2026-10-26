@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.utils import timezone
+from django.contrib.auth.models import update_last_login
 
 from .models import AllowedIPRange, Role, User, Assistant, ROLE_CODES
 from .services import UserService, AssistantService
@@ -19,8 +20,8 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['id', 'full_name', 'username', 'role', 'is_admin', 'is_active', 'needs_password_change', 'created_at']
-        read_only_fields = ['id', 'created_at', 'is_admin', 'needs_password_change']
+        fields = ['id', 'full_name', 'username', 'role', 'is_admin', 'is_active', 'needs_password_change', 'last_login', 'created_at']
+        read_only_fields = ['id', 'created_at', 'is_admin', 'needs_password_change', 'last_login']
 
     def validate_role(self, value):
         normalized = (value or '').strip().lower()
@@ -73,6 +74,7 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
                 raise serializers.ValidationError({'detail': 'Usuario inactivo. Contacte al administrador.'})
 
         data = super().validate(attrs)
+        update_last_login(None, self.user)
         data['ok'] = True 
         data['user'] = {
             'id': self.user.id,
