@@ -8,7 +8,7 @@ from .models import AllowedIPRange, Assistant, Role, User
 class CustomUserCreationForm(UserCreationForm):
     class Meta:
         model = User
-        fields = ('username', 'full_name', 'role')
+        fields = ('username', 'full_name', 'email', 'role')
 
 
 class CustomUserChangeForm(UserChangeForm):
@@ -22,23 +22,23 @@ class UserAdmin(BaseUserAdmin):
     form = CustomUserChangeForm
     add_form = CustomUserCreationForm
 
-    list_display = ['id', 'username', 'full_name', 'role', 'is_admin', 'is_active', 'created_at']
+    list_display = ['id', 'username', 'full_name', 'email', 'role', 'is_admin', 'is_active', 'created_at']
     list_editable = ['is_active']
     list_filter = ['role', 'is_admin', 'is_active']
-    search_fields = ['username', 'full_name']
+    search_fields = ['username', 'full_name', 'email']
     ordering = ['username']
     raw_id_fields = ['role']
     actions = ['mark_as_active', 'mark_as_inactive']
 
     fieldsets = (
-        (None, {'fields': ('username', 'full_name', 'role', 'password')}),
+        (None, {'fields': ('username', 'full_name', 'email', 'role', 'password')}),
         ('Permisos', {'fields': ('is_admin', 'is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions')}),
     )
 
     add_fieldsets = (
         (None, {
             'classes': ('wide',),
-            'fields': ('username', 'full_name', 'role', 'password1', 'password2', 'is_admin', 'is_active'),
+            'fields': ('username', 'full_name', 'email', 'role', 'password1', 'password2', 'is_admin', 'is_active'),
         }),
     )
 

@@ -3,7 +3,7 @@ from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.utils import timezone
 from django.contrib.auth.models import update_last_login
 
-from .models import AllowedIPRange, Role, User, Assistant, ROLE_CODES
+from .models import AllowedIPRange, Role, User, Assistant, ROLE_CODES, validate_institute_email
 from .services import UserService, AssistantService
 from apps.schedules.serializers import ScheduleBlockCreateSerializer
 from apps.projects.models import CoordinatorXProject, Project
@@ -20,7 +20,7 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['id', 'full_name', 'username', 'role', 'is_admin', 'is_active', 'needs_password_change', 'last_login', 'created_at']
+        fields = ['id', 'full_name', 'username', 'email', 'role', 'is_admin', 'is_active', 'needs_password_change', 'last_login', 'created_at']
         read_only_fields = ['id', 'created_at', 'is_admin', 'needs_password_change', 'last_login']
 
     def validate_role(self, value):
@@ -30,6 +30,14 @@ class UserSerializer(serializers.ModelSerializer):
                 'El rol debe ser asistente, coordinador o admin.'
             )
         return normalized
+
+    def validate_email(self, value):
+        if not value:
+            return None
+        value = value.strip().lower()
+        if value:
+            validate_institute_email(value)
+        return value or None
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
@@ -90,6 +98,7 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
 class AssistantCreateSerializer(serializers.Serializer):
     full_name = serializers.CharField(max_length=150)
     username = serializers.CharField(max_length=255)
+    email = serializers.EmailField(required=False, allow_null=True, allow_blank=True)
     password = serializers.CharField(write_only=True, min_length=8)
     password_confirm = serializers.CharField(write_only=True, min_length=8)
     is_active = serializers.BooleanField(required=False, default=True)
@@ -104,7 +113,18 @@ class AssistantCreateSerializer(serializers.Serializer):
             raise serializers.ValidationError('Ya existe un usuario con ese username.')
         return value
 
+    def validate_email(self, value):
+        if not value:
+            return None
+        value = value.strip().lower()
+        if value:
+            validate_institute_email(value)
+        return value or None
+
     def validate(self, attrs):
+        request = self.context.get('request')
+        if attrs.get('email') and (request is None or not request.user.is_admin):
+            raise serializers.ValidationError({'email': 'Solo un administrador puede asignar correos.'})
         if attrs['password'] != attrs['password_confirm']:
             raise serializers.ValidationError({'password_confirm': 'Las contraseñas no coinciden.'})
 
@@ -127,6 +147,7 @@ class AssistantCreateSerializer(serializers.Serializer):
 class CoordinatorCreateSerializer(serializers.Serializer):
     full_name = serializers.CharField(max_length=150)
     username = serializers.CharField(max_length=255)
+    email = serializers.EmailField(required=False, allow_null=True, allow_blank=True)
     password = serializers.CharField(write_only=True, min_length=8)
     password_confirm = serializers.CharField(write_only=True, min_length=8)
     project_ids = serializers.PrimaryKeyRelatedField(
@@ -141,6 +162,14 @@ class CoordinatorCreateSerializer(serializers.Serializer):
             raise serializers.ValidationError('Ya existe un usuario con ese username.')
         return value
 
+    def validate_email(self, value):
+        if not value:
+            return None
+        value = value.strip().lower()
+        if value:
+            validate_institute_email(value)
+        return value or None
+
     def validate(self, attrs):
         if attrs['password'] != attrs['password_confirm']:
             raise serializers.ValidationError({'password_confirm': 'Las contraseñas no coinciden.'})
@@ -152,6 +181,7 @@ class CoordinatorCreateSerializer(serializers.Serializer):
         user = UserService.create_user(
             full_name=validated_data['full_name'],
             username=validated_data['username'],
+            email=validated_data.get('email'),
             role_code='coordinador',
             password=validated_data['password'],
             is_active=True,
@@ -175,7 +205,15 @@ class CoordinatorAdminSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['id', 'username', 'full_name', 'is_active', 'project_ids']
+        fields = ['id', 'username', 'full_name', 'email', 'is_active', 'project_ids']
+
+    def validate_email(self, value):
+        if not value:
+            return None
+        value = value.strip().lower()
+        if value:
+            validate_institute_email(value)
+        return value or None
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
@@ -230,12 +268,13 @@ class AssistantAdminSerializer(serializers.ModelSerializer):
     username = serializers.CharField(source='user.username')
     full_name = serializers.CharField(source='user.full_name')
     is_active = serializers.BooleanField(source='user.is_active')
+    email = serializers.EmailField(source='user.email', required=False, allow_null=True, allow_blank=True)
     schedule_blocks = serializers.ListField(required=False, write_only=True)
 
     class Meta:
         model = Assistant
         fields = [
-            'id', 'username', 'full_name', 'is_active',
+            'id', 'username', 'full_name', 'email', 'is_active',
             'last_reactivation_date',
             'start_date', 'end_date', 'weekly_hours', 'schedule_blocks',
         ]
@@ -248,6 +287,14 @@ class AssistantAdminSerializer(serializers.ModelSerializer):
         if queryset.exists():
             raise serializers.ValidationError('Ya existe un usuario con ese username.')
         return value
+
+    def validate_email(self, value):
+        if not value:
+            return None
+        value = value.strip().lower()
+        if value:
+            validate_institute_email(value)
+        return value or None
 
     def update(self, instance, validated_data):
         user_data = validated_data.pop('user', {})
@@ -319,7 +366,7 @@ class AssistantDetailSerializer(serializers.ModelSerializer):
     id = serializers.IntegerField(source='user.id', read_only=True)
     username = serializers.CharField(source='user.username', read_only=True)
     full_name = serializers.CharField(source='user.full_name', read_only=True)
-    is_active = serializers.CharField(source='user.is_active ', read_only=True)
+    is_active = serializers.BooleanField(source='user.is_active', read_only=True)
     role = serializers.CharField(source='user.role', read_only=True)
 
     class Meta:

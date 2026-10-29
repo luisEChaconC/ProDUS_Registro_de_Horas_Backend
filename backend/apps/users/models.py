@@ -1,9 +1,15 @@
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
+from django.core.validators import RegexValidator
 from django.db import models
 from django.utils import timezone
 
 
 ROLE_CODES = ('asistente', 'coordinador', 'admin')
+INSTITUTE_EMAIL_REGEX = r'(?i)^[a-z0-9.!#$%&\'*+/=?^_`{|}~-]+@ucr\.ac\.cr$'
+validate_institute_email = RegexValidator(
+    regex=INSTITUTE_EMAIL_REGEX,
+    message='El correo debe pertenecer al dominio ucr.ac.cr.',
+)
 
 
 class Role(models.Model):
@@ -53,6 +59,12 @@ class UserManager(BaseUserManager):
 class User(AbstractBaseUser, PermissionsMixin):
     full_name = models.CharField(max_length=150, default='', verbose_name='Nombre completo')
     username = models.CharField(max_length=255, unique=True, verbose_name='Nombre de usuario')
+    email = models.EmailField(
+        null=True,
+        blank=True,
+        validators=[validate_institute_email],
+        verbose_name='Correo institucional',
+    )
     role = models.ForeignKey(
         Role,
         on_delete=models.PROTECT,
@@ -87,6 +99,26 @@ class User(AbstractBaseUser, PermissionsMixin):
             raise ValidationError({
                 'role': 'El rol debe ser asistente, coordinador o admin.'
             })
+
+        if self.email:
+            self.email = self.email.strip().lower() or None
+            if self.email:
+                validate_institute_email(self.email)
+
+    def save(self, *args, **kwargs):
+        previous_email = None
+        if self.pk:
+            previous_email = type(self).objects.filter(pk=self.pk).values_list('email', flat=True).first()
+        if self.email:
+            self.email = self.email.strip().lower() or None
+            if self.email:
+                validate_institute_email(self.email)
+        result = super().save(*args, **kwargs)
+        if previous_email != self.email and self.pk:
+            from .recovery import invalidate_user_recovery
+
+            invalidate_user_recovery(self)
+        return result
 
     def __str__(self):
         return self.full_name or self.username
