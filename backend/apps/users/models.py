@@ -124,6 +124,49 @@ class User(AbstractBaseUser, PermissionsMixin):
         return self.full_name or self.username
 
 
+class PasswordResetCode(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='password_reset_codes')
+    code_hash = models.CharField(max_length=128)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    used_at = models.DateTimeField(null=True, blank=True)
+    invalidated_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['user', 'created_at']),
+            models.Index(fields=['user', 'used_at', 'invalidated_at']),
+        ]
+
+
+class PasswordResetState(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='password_reset_state')
+    last_sent_at = models.DateTimeField(null=True, blank=True)
+    window_started_at = models.DateTimeField(default=timezone.now)
+    user_send_count = models.PositiveSmallIntegerField(default=0)
+    failed_attempts = models.PositiveSmallIntegerField(default=0)
+    blocked_until = models.DateTimeField(null=True, blank=True)
+
+
+class PasswordResetIPThrottle(models.Model):
+    ip_address = models.GenericIPAddressField(unique=True)
+    window_started_at = models.DateTimeField(default=timezone.now)
+    send_count = models.PositiveSmallIntegerField(default=0)
+
+
+class PasswordResetAuthorization(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='password_reset_authorizations')
+    token_hash = models.CharField(max_length=128)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    used_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['user', 'used_at', 'expires_at']),
+        ]
+
+
 class Assistant(models.Model):
     user = models.OneToOneField(
         User,

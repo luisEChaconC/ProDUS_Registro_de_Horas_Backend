@@ -20,9 +20,13 @@ from .serializers import (
     CustomTokenObtainPairSerializer,
     UserSerializer,
     AssistantDetailSerializer,
+    PasswordResetRequestSerializer,
+    PasswordResetVerifySerializer,
+    PasswordResetConfirmSerializer,
 )
 
 from .services import validate_institute_ip_addr, change_user_password
+from .recovery import request_password_reset, reset_password, verify_password_reset
 
 
 @api_view(['POST', 'GET'])
@@ -38,6 +42,53 @@ def logout_view(request):
     return Response({'detail': 'Sesión cerrada correctamente'}, status=status.HTTP_200_OK)
 
 
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def password_reset_request_view(request):
+    serializer = PasswordResetRequestSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    return Response(
+        request_password_reset(serializer.validated_data['username'], request),
+        status=status.HTTP_200_OK,
+    )
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def password_reset_verify_view(request):
+    serializer = PasswordResetVerifySerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    token = verify_password_reset(
+        serializer.validated_data['username'],
+        serializer.validated_data['code'],
+    )
+    if token is None:
+        return Response(
+            {'detail': 'El código no es válido o ya no está disponible.'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    return Response({'ok': True, 'reset_token': token}, status=status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def password_reset_confirm_view(request):
+    serializer = PasswordResetConfirmSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    if not reset_password(
+        serializer.validated_data['reset_token'],
+        serializer.validated_data['new_password'],
+    ):
+        return Response(
+            {'detail': 'La autorización de restablecimiento no es válida o expiró.'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    return Response(
+        {'ok': True, 'detail': 'Contraseña restablecida correctamente.'},
+        status=status.HTTP_200_OK,
+    )
+
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def me_view(request):
@@ -46,7 +97,7 @@ def me_view(request):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated, IsAdminOrCoordinator])
 def create_assistant_view(request):
-    serializer = AssistantCreateSerializer(data=request.data)
+    serializer = AssistantCreateSerializer(data=request.data, context={'request': request})
     serializer.is_valid(raise_exception=True)
     assistant = serializer.save()
 

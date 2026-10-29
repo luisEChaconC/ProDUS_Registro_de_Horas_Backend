@@ -16,6 +16,9 @@ from .views import (
     admin_assistant_detail_view,
     admin_coordinators_view,
     admin_coordinator_detail_view,
+    password_reset_request_view,
+    password_reset_verify_view,
+    password_reset_confirm_view,
 )
 
 router = DefaultRouter()
@@ -28,6 +31,9 @@ urlpatterns = [
     path('auth/logout/', logout_view, name='logout'),
     path('auth/me/', me_view, name='auth_me'),
     path('auth/validate-institute-ip/', validate_institute_ip_addr_view, name='validate_institute_ip_addr'),
+    path('auth/password-reset/request/', password_reset_request_view, name='password_reset_request'),
+    path('auth/password-reset/verify/', password_reset_verify_view, name='password_reset_verify'),
+    path('auth/password-reset/confirm/', password_reset_confirm_view, name='password_reset_confirm'),
     path('assistants/', create_assistant_view, name='create_assistant'),
     path('assistants/create/', create_assistant_view, name='create_assistant_legacy'),
     path('assistants/list/', list_assistants_view, name='list_assistants'),

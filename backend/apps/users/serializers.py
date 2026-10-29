@@ -2,6 +2,7 @@ from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.utils import timezone
 from django.contrib.auth.models import update_last_login
+from django.contrib.auth.password_validation import validate_password
 
 from .models import AllowedIPRange, Role, User, Assistant, ROLE_CODES, validate_institute_email
 from .services import UserService, AssistantService
@@ -131,7 +132,6 @@ class AssistantCreateSerializer(serializers.Serializer):
         end_date = attrs.get('end_date')
         if end_date and end_date < attrs['start_date']:
             raise serializers.ValidationError({'end_date': 'La fecha de finalización no puede ser anterior a la fecha de inicio.'})
-
         return attrs
 
     def create(self, validated_data):
@@ -361,6 +361,38 @@ class ChangePasswordSerializer(serializers.Serializer):
                 'new_password': 'Debe tener al menos un número.'
             })
 
+        return attrs
+
+
+class PasswordResetRequestSerializer(serializers.Serializer):
+    username = serializers.CharField(max_length=255, trim_whitespace=True)
+
+
+class PasswordResetVerifySerializer(serializers.Serializer):
+    username = serializers.CharField(max_length=255, trim_whitespace=True)
+    code = serializers.RegexField(regex=r'^\d{6}$', max_length=6, min_length=6)
+
+
+class PasswordResetConfirmSerializer(serializers.Serializer):
+    reset_token = serializers.CharField(max_length=128, write_only=True)
+    new_password = serializers.CharField(write_only=True, min_length=8)
+    new_password_confirm = serializers.CharField(write_only=True, min_length=8)
+
+    def validate(self, attrs):
+        if attrs['new_password'] != attrs['new_password_confirm']:
+            raise serializers.ValidationError({
+                'new_password_confirm': 'Las contraseñas nuevas no coinciden.'
+            })
+        password = attrs['new_password']
+        if not any(char.isupper() for char in password):
+            raise serializers.ValidationError({
+                'new_password': 'Debe tener al menos una mayúscula.'
+            })
+        if not any(char.isdigit() for char in password):
+            raise serializers.ValidationError({
+                'new_password': 'Debe tener al menos un número.'
+            })
+        validate_password(password)
         return attrs
 class AssistantDetailSerializer(serializers.ModelSerializer):
     id = serializers.IntegerField(source='user.id', read_only=True)

@@ -3,6 +3,7 @@ Django settings for backend project.
 """
 
 import os
+import sys
 from pathlib import Path
 from datetime import timedelta
 from decouple import config, Csv
@@ -117,7 +118,15 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 # Database
 # ============================================
 
-DATABASES = {
+if 'test' in sys.argv and (config('USE_SQLITE_FOR_TESTS', default=False, cast=bool) or 'sqlite' in os.getenv('DB_ENGINE', '')):
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'test_db.sqlite3',
+        }
+    }
+else:
+    DATABASES = {
     'default': {
         'ENGINE': config('DB_ENGINE', default='django.db.backends.postgresql'),
         'NAME': config('DB_NAME', default='produs_horas'),
@@ -153,6 +162,17 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# SMTP institucional UCR.
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.ucr.ac.cr')
+EMAIL_PORT = int(os.getenv('EMAIL_PORT', '587'))
+EMAIL_USE_TLS = True
+EMAIL_USE_SSL = False
+EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
+EMAIL_TIMEOUT = 10
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'vc.produs@ucr.ac.cr')
 
 # ============================================
 # Custom User Model
